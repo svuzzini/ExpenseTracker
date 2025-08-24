@@ -1,0 +1,160 @@
+# AWS ECS Task Definition for ExpenseTracker
+# Deploy to AWS Fargate for serverless container hosting
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: expense-tracker-config
+data:
+  GIN_MODE: "release"
+  PORT: "8080"
+  DB_PATH: "/app/data/expense_tracker.db"
+  BACKUP_ENABLED: "true"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: expense-tracker
+  labels:
+    app: expense-tracker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: expense-tracker
+  template:
+    metadata:
+      labels:
+        app: expense-tracker
+    spec:
+      containers:
+      - name: expense-tracker
+        image: your-account.dkr.ecr.us-west-2.amazonaws.com/expense-tracker:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: GIN_MODE
+          valueFrom:
+            configMapKeyRef:
+              name: expense-tracker-config
+              key: GIN_MODE
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: expense-tracker-config
+              key: PORT
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: expense-tracker-secrets
+              key: jwt-secret
+        - name: DB_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: expense-tracker-config
+              key: DB_PATH
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+        - name: backup-volume
+          mountPath: /app/backups
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: expense-tracker-data
+      - name: backup-volume
+        persistentVolumeClaim:
+          claimName: expense-tracker-backups
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: expense-tracker-service
+spec:
+  selector:
+    app: expense-tracker
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: LoadBalancer
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: expense-tracker-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: gp2
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: expense-tracker-backups
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: gp2
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: expense-tracker-secrets
+type: Opaque
+data:
+  jwt-secret: <base64-encoded-jwt-secret>
+
+---
+# AWS Application Load Balancer Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: expense-tracker-ingress
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:123456789012:certificate/abc12345-1234-1234-1234-123456789012
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+spec:
+  rules:
+  - host: expenses.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: expense-tracker-service
+            port:
+              number: 80

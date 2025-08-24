@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation Header -->
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <div class="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-receipt text-white text-sm"></i>
+                    </div>
+                    <h1 class="text-xl font-bold text-gray-900">ExpenseTracker</h1>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- User Info -->
+                    <div class="flex items-center space-x-3">
+                        <div class="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-gray-600 text-sm"></i>
+                        </div>
+                        <span id="user-name" class="text-sm font-medium text-gray-700">Loading...</span>
+                    </div>
+                    
+                    <!-- Logout -->
+                    <button id="logout-btn" class="text-sm text-gray-500 hover:text-gray-700 px-3 py-1 rounded-md border border-gray-300 hover:bg-gray-50">
+                        <i class="fas fa-sign-out-alt mr-1"></i>
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Welcome Section -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">Welcome to ExpenseTracker!</h2>
+            <p class="text-gray-600">Manage your shared expenses and events with ease.</p>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-plus text-blue-600"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900">Create Event</h3>
+                </div>
+                <p class="text-gray-600 text-sm mb-4">Start a new expense tracking event for your group.</p>
+                <button class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-150">
+                    <i class="fas fa-plus mr-2"></i>
+                    New Event
+                </button>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-users text-green-600"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900">Join Event</h3>
+                </div>
+                <p class="text-gray-600 text-sm mb-4">Join an existing event using an event code.</p>
+                <button class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition duration-150">
+                    <i class="fas fa-sign-in-alt mr-2"></i>
+                    Join Event
+                </button>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-bar text-purple-600"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900">View Reports</h3>
+                </div>
+                <p class="text-gray-600 text-sm mb-4">Check your expense reports and settlements.</p>
+                <button class="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition duration-150">
+                    <i class="fas fa-chart-bar mr-2"></i>
+                    Reports
+                </button>
+            </div>
+        </div>
+
+        <!-- Recent Events -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Recent Events</h3>
+            </div>
+            <div id="events-list" class="p-6">
+                <div class="text-center py-8">
+                    <i class="fas fa-calendar-alt text-gray-400 text-3xl mb-4"></i>
+                    <p class="text-gray-500">Loading your events...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-50 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 shadow-lg">
+            <div class="flex items-center space-x-3">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span class="text-gray-700">Loading dashboard...</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check authentication on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+
+            if (!token || !user) {
+                // Redirect to login if no token
+                window.location.href = '/';
+                return;
+            }
+
+            try {
+                const userData = JSON.parse(user);
+                document.getElementById('user-name').textContent = userData.username || userData.email;
+            } catch (e) {
+                console.error('Error parsing user data:', e);
+                document.getElementById('user-name').textContent = 'User';
+            }
+
+            // Hide loading overlay
+            document.getElementById('loading-overlay').style.display = 'none';
+
+            // Load user events
+            loadUserEvents();
+        });
+
+        // Logout functionality
+        document.getElementById('logout-btn').addEventListener('click', function() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/';
+        });
+
+        // Load user events
+        async function loadUserEvents() {
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch('/api/v1/events/', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const events = await response.json();
+                    displayEvents(events);
+                } else {
+                    throw new Error('Failed to load events');
+                }
+            } catch (error) {
+                console.error('Error loading events:', error);
+                document.getElementById('events-list').innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-exclamation-triangle text-red-400 text-3xl mb-4"></i>
+                        <p class="text-red-500">Failed to load events</p>
+                        <button onclick="loadUserEvents()" class="mt-2 text-blue-600 hover:text-blue-800">Try again</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Display events
+        function displayEvents(events) {
+            const eventsContainer = document.getElementById('events-list');
+            
+            if (!events || events.length === 0) {
+                eventsContainer.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-calendar-plus text-gray-400 text-3xl mb-4"></i>
+                        <p class="text-gray-500 mb-4">No events yet</p>
+                        <p class="text-gray-400 text-sm">Create your first event to get started!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const eventsHTML = events.map(event => `
+                <div class="border-b border-gray-200 last:border-b-0 py-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="font-medium text-gray-900">${event.name}</h4>
+                            <p class="text-sm text-gray-600">${event.description || 'No description'}</p>
+                            <p class="text-xs text-gray-500 mt-1">Code: ${event.code}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-medium text-gray-900">${event.currency} ${event.total_expenses || '0.00'}</p>
+                            <p class="text-xs text-gray-500">${event.status}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            eventsContainer.innerHTML = eventsHTML;
+        }
+
+        // Add event listeners for action buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get all buttons and add event handlers based on their content
+            const buttons = document.querySelectorAll('button');
+            
+            buttons.forEach(button => {
+                const buttonText = button.textContent.trim();
+                
+                if (buttonText.includes('New Event')) {
+                    button.addEventListener('click', function() {
+                        showCreateEventModal();
+                    });
+                } else if (buttonText.includes('Join Event')) {
+                    button.addEventListener('click', function() {
+                        showJoinEventModal();
+                    });
+                } else if (buttonText.includes('View Reports') || buttonText.includes('Reports')) {
+                    button.addEventListener('click', function() {
+                        showReportsModal();
+                    });
+                }
+            });
+        });
+
+        // Create Event Modal Functions
+        function showCreateEventModal() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50';
+            modal.innerHTML = `
+                <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                    <div class="mt-3">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Create New Event</h3>
+                        <form id="create-event-form">
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Event Name</label>
+                                <input type="text" id="event-name" required
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                       placeholder="Enter event name">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                                <textarea id="event-description" rows="3"
+                                          class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          placeholder="Optional description"></textarea>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+                                <select id="event-currency"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="USD">USD - US Dollar</option>
+                                    <option value="EUR">EUR - Euro</option>
+                                    <option value="GBP">GBP - British Pound</option>
+                                    <option value="CAD">CAD - Canadian Dollar</option>
+                                    <option value="AUD">AUD - Australian Dollar</option>
+                                </select>
+                            </div>
+                            <div class="mb-6">
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="require-approval" class="mr-2">
+                                    <span class="text-sm text-gray-700">Require approval for expenses</span>
+                                </label>
+                            </div>
+                            <div class="flex space-x-3">
+                                <button type="button" onclick="closeModal()" 
+                                        class="w-full bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition">
+                                    Cancel
+                                </button>
+                                <button type="submit" 
+                                        class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition">
+                                    Create Event
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // Handle form submission
+            document.getElementById('create-event-form').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await handleCreateEvent();
+            });
+        }
+
+        // Join Event Modal Functions
+        function showJoinEventModal() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50';
+            modal.innerHTML = `
+                <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                    <div class="mt-3">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Join Event</h3>
+                        <form id="join-event-form">
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Event Code</label>
+                                <input type="text" id="event-code" required
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                       placeholder="Enter 8-character event code"
+                                       maxlength="8" style="text-transform: uppercase;">
+                            </div>
+                            <div class="flex space-x-3">
+                                <button type="button" onclick="closeModal()" 
+                                        class="w-full bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition">
+                                    Cancel
+                                </button>
+                                <button type="submit" 
+                                        class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition">
+                                    Join Event
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // Handle form submission
+            document.getElementById('join-event-form').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await handleJoinEvent();
+            });
+        }
+
+        // Handle Create Event
+        async function handleCreateEvent() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Please log in again');
+                window.location.href = '/';
+                return;
+            }
+
+            const eventData = {
+                name: document.getElementById('event-name').value,
+                description: document.getElementById('event-description').value,
+                currency: document.getElementById('event-currency').value,
+                require_approval: document.getElementById('require-approval').checked
+            };
+
+            try {
+                const response = await fetch('/api/v1/events/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(eventData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    closeModal();
+                    showToast('Event created successfully! Event code: ' + data.code, 'success');
+                    loadUserEvents(); // Refresh the events list
+                } else {
+                    alert('Error creating event: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error creating event: ' + error.message);
+            }
+        }
+
+        // Handle Join Event
+        async function handleJoinEvent() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Please log in again');
+                window.location.href = '/';
+                return;
+            }
+
+            const eventCode = document.getElementById('event-code').value.toUpperCase();
+
+            try {
+                const response = await fetch('/api/v1/events/join', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ code: eventCode })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    closeModal();
+                    showToast('Successfully joined event!', 'success');
+                    loadUserEvents(); // Refresh the events list
+                } else {
+                    alert('Error joining event: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error joining event: ' + error.message);
+            }
+        }
+
+        // Close modal function
+        function closeModal() {
+            const modal = document.querySelector('.fixed.inset-0.bg-gray-600');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        // Toast notification function
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+            const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+            
+            toast.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50`;
+            toast.innerHTML = `<i class="fas ${icon} mr-2"></i>${message}`;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 5000);
+        }
+
+        // Reports Modal Functions
+        function showReportsModal() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50';
+            modal.innerHTML = `
+                <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+                    <div class="mt-3">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                                <i class="fas fa-chart-bar text-purple-600 mr-2"></i>
+                                Expense Reports & Analytics
+                            </h3>
+                            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Report Tabs -->
+                        <div class="border-b border-gray-200 mb-6">
+                            <nav class="-mb-px flex space-x-8">
+                                <button onclick="showReportTab('overview')" class="report-tab-btn border-b-2 border-purple-500 text-purple-600 py-2 px-1 text-sm font-medium" data-tab="overview">
+                                    Overview
+                                </button>
+                                <button onclick="showReportTab('expenses')" class="report-tab-btn border-b-2 border-transparent text-gray-500 hover:text-gray-700 py-2 px-1 text-sm font-medium" data-tab="expenses">
+                                    Expenses
+                                </button>
+                                <button onclick="showReportTab('balances')" class="report-tab-btn border-b-2 border-transparent text-gray-500 hover:text-gray-700 py-2 px-1 text-sm font-medium" data-tab="balances">
+                                    Balances
+                                </button>
+                                <button onclick="showReportTab('settlements')" class="report-tab-btn border-b-2 border-transparent text-gray-500 hover:text-gray-700 py-2 px-1 text-sm font-medium" data-tab="settlements">
+                                    Settlements
+                                </button>
+                            </nav>
+                        </div>
+                        
+                        <!-- Report Content -->
+                        <div id="report-content">
+                            <!-- Content will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Load initial overview tab
+            showReportTab('overview');
+        }
+        
+        function showReportTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.report-tab-btn').forEach(btn => {
+                btn.className = 'report-tab-btn border-b-2 border-transparent text-gray-500 hover:text-gray-700 py-2 px-1 text-sm font-medium';
+            });
+            document.querySelector(`[data-tab="${tabName}"]`).className = 'report-tab-btn border-b-2 border-purple-500 text-purple-600 py-2 px-1 text-sm font-medium';
+            
+            // Load tab content
+            const contentDiv = document.getElementById('report-content');
+            
+            switch(tabName) {
+                case 'overview':
+                    loadOverviewReport(contentDiv);
+                    break;
+                case 'expenses':
+                    loadExpensesReport(contentDiv);
+                    break;
+                case 'balances':
+                    loadBalancesReport(contentDiv);
+                    break;
+                case 'settlements':
+                    loadSettlementsReport(contentDiv);
+                    break;
+            }
+        }
+        
+        async function loadOverviewReport(container) {
+            container.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-purple-600 text-2xl"></i><p class="mt-2 text-gray-600">Loading overview...</p></div>';
+            
+            try {
+                const token = localStorage.getItem('token');
+                // Get user events for overview
+                const response = await fetch('/api/v1/events/', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const events = await response.json();
+                    displayOverviewReport(container, events);
+                } else {
+                    container.innerHTML = '<div class="text-center py-8 text-red-600"><i class="fas fa-exclamation-triangle"></i><p class="mt-2">Failed to load overview data</p></div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="text-center py-8 text-red-600"><i class="fas fa-exclamation-triangle"></i><p class="mt-2">Error loading data</p></div>';
+            }
+        }
+        
+        function displayOverviewReport(container, events) {
+            let totalEvents = events.length;
+            let totalExpenses = 0;
+            let totalContributions = 0;
+            let activeEvents = 0;
+            
+            events.forEach(event => {
+                if (event.status === 'active') activeEvents++;
+                totalExpenses += parseFloat(event.total_expenses || 0);
+                totalContributions += parseFloat(event.total_contributions || 0);
+            });
+            
+            const netBalance = totalContributions - totalExpenses;
+            
+            container.innerHTML = 
+                '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">' +
+                    '<div class="bg-blue-50 rounded-lg p-4">' +
+                        '<div class="flex items-center">' +
+                            '<div class="p-3 rounded-full bg-blue-100">' +
+                                '<i class="fas fa-calendar-alt text-blue-600"></i>' +
+                            '</div>' +
+                            '<div class="ml-4">' +
+                                '<h4 class="text-lg font-semibold text-gray-900">' + totalEvents + '</h4>' +
+                                '<p class="text-sm text-gray-600">Total Events</p>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    
+                    '<div class="bg-green-50 rounded-lg p-4">' +
+                        '<div class="flex items-center">' +
+                            '<div class="p-3 rounded-full bg-green-100">' +
+                                '<i class="fas fa-plus-circle text-green-600"></i>' +
+                            '</div>' +
+                            '<div class="ml-4">' +
+                                '<h4 class="text-lg font-semibold text-gray-900">$' + totalContributions.toFixed(2) + '</h4>' +
+                                '<p class="text-sm text-gray-600">Total Contributions</p>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    
+                    '<div class="bg-red-50 rounded-lg p-4">' +
+                        '<div class="flex items-center">' +
+                            '<div class="p-3 rounded-full bg-red-100">' +
+                                '<i class="fas fa-receipt text-red-600"></i>' +
+                            '</div>' +
+                            '<div class="ml-4">' +
+                                '<h4 class="text-lg font-semibold text-gray-900">$' + totalExpenses.toFixed(2) + '</h4>' +
+                                '<p class="text-sm text-gray-600">Total Expenses</p>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    
+                    '<div class="bg-purple-50 rounded-lg p-4">' +
+                        '<div class="flex items-center">' +
+                            '<div class="p-3 rounded-full bg-purple-100">' +
+                                '<i class="fas fa-balance-scale text-purple-600"></i>' +
+                            '</div>' +
+                            '<div class="ml-4">' +
+                                '<h4 class="text-lg font-semibold ' + (netBalance >= 0 ? 'text-green-600' : 'text-red-600') + '">' +
+                                    (netBalance >= 0 ? '+' : '') + '$' + netBalance.toFixed(2) +
+                                '</h4>' +
+                                '<p class="text-sm text-gray-600">Net Balance</p>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                
+                '<div class="bg-gray-50 rounded-lg p-6">' +
+                    '<h4 class="text-lg font-medium text-gray-900 mb-4">Recent Events</h4>' +
+                    '<div class="space-y-3">' +
+                        events.slice(0, 5).map(event => 
+                            '<div class="flex items-center justify-between bg-white p-3 rounded-lg">' +
+                                '<div class="flex items-center space-x-3">' +
+                                    '<div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">' +
+                                        '<i class="fas fa-calendar text-blue-600 text-sm"></i>' +
+                                    '</div>' +
+                                    '<div>' +
+                                        '<p class="font-medium text-gray-900">' + event.name + '</p>' +
+                                        '<p class="text-sm text-gray-500">Code: ' + event.code + '</p>' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="text-right">' +
+                                    '<p class="text-sm font-medium ' + ((event.total_contributions - event.total_expenses) >= 0 ? 'text-green-600' : 'text-red-600') + '">' +
+                                        ((event.total_contributions - event.total_expenses) >= 0 ? '+' : '') + '$' + (event.total_contributions - event.total_expenses).toFixed(2) +
+                                    '</p>' +
+                                    '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ' + (event.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800') + '">' +
+                                        event.status +
+                                    '</span>' +
+                                '</div>' +
+                            '</div>'
+                        ).join('') +
+                    '</div>' +
+                    (events.length === 0 ? '<div class="text-center py-8 text-gray-500"><i class="fas fa-calendar-alt text-3xl mb-4 opacity-50"></i><p>No events yet. Create your first event!</p></div>' : '') +
+                '</div>';
+        }
+        
+        async function loadExpensesReport(container) {
+            container.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-purple-600 text-2xl"></i><p class="mt-2 text-gray-600">Loading expenses...</p></div>';
+            
+            // For now, show a placeholder
+            setTimeout(() => {
+                container.innerHTML = 
+                    '<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">' +
+                        '<div class="flex items-center">' +
+                            '<i class="fas fa-info-circle text-yellow-600 mr-2"></i>' +
+                            '<p class="text-yellow-800">Detailed expense reports will show your spending patterns by category, event, and time period.</p>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="text-center py-12 text-gray-500">' +
+                        '<i class="fas fa-chart-pie text-4xl mb-4 opacity-50"></i>' +
+                        '<h3 class="text-lg font-medium mb-2">Expense Analytics Coming Soon</h3>' +
+                        '<p>Advanced expense reporting and analytics features are in development.</p>' +
+                    '</div>';
+            }, 1000);
+        }
+        
+        async function loadBalancesReport(container) {
+            container.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-purple-600 text-2xl"></i><p class="mt-2 text-gray-600">Loading balances...</p></div>';
+            
+            setTimeout(() => {
+                container.innerHTML = 
+                    '<div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">' +
+                        '<div class="flex items-center">' +
+                            '<i class="fas fa-info-circle text-blue-600 mr-2"></i>' +
+                            '<p class="text-blue-800">Balance reports show how much you owe or are owed across all events.</p>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="text-center py-12 text-gray-500">' +
+                        '<i class="fas fa-balance-scale text-4xl mb-4 opacity-50"></i>' +
+                        '<h3 class="text-lg font-medium mb-2">Balance Analytics Coming Soon</h3>' +
+                        '<p>Comprehensive balance tracking and analysis features are in development.</p>' +
+                    '</div>';
+            }, 1000);
+        }
+        
+        async function loadSettlementsReport(container) {
+            container.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-purple-600 text-2xl"></i><p class="mt-2 text-gray-600">Loading settlements...</p></div>';
+            
+            setTimeout(() => {
+                container.innerHTML = 
+                    '<div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">' +
+                        '<div class="flex items-center">' +
+                            '<i class="fas fa-info-circle text-green-600 mr-2"></i>' +
+                            '<p class="text-green-800">Settlement reports track your payment history and outstanding settlements.</p>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="text-center py-12 text-gray-500">' +
+                        '<i class="fas fa-handshake text-4xl mb-4 opacity-50"></i>' +
+                        '<h3 class="text-lg font-medium mb-2">Settlement History Coming Soon</h3>' +
+                        '<p>Detailed settlement tracking and payment history features are in development.</p>' +
+                    '</div>';
+            }, 1000);
+        }
+
+        // Show success message from registration
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('registered') === 'true') {
+            showToast('Registration successful! Welcome to ExpenseTracker!', 'success');
+        }
+    </script>
+</body>
+</html>

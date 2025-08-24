@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExpenseTracker Demo - Splitwise Features</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .demo-expense {
+            transition: all 0.3s ease;
+        }
+        .demo-expense:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- Header -->
+<nav class="bg-white border-b border-gray-200 sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center py-4">
+            <div class="flex items-center space-x-4">
+                <div class="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-receipt text-white text-sm"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-semibold text-gray-900">ExpenseTracker Demo</h1>
+                    <p class="text-sm text-gray-500">Splitwise-like Features Showcase</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <i class="fas fa-circle text-green-400 mr-1" style="font-size: 6px;"></i>
+                    Live Demo
+                </span>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Demo Event Overview -->
+<div class="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="text-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-900">Weekend Trip to Cabo</h2>
+            <p class="text-gray-600">Demo event showcasing expense splitting features</p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <!-- Total Contributions -->
+            <div class="bg-white rounded-lg p-4 shadow-sm">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-plus-circle text-green-600"></i>
+                        </div>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-500">Total Contributions</p>
+                        <p class="text-lg font-semibold text-gray-900" id="total-contributions">$1,200.00</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Total Expenses -->
+            <div class="bg-white rounded-lg p-4 shadow-sm">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-receipt text-red-600"></i>
+                        </div>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-500">Total Expenses</p>
+                        <p class="text-lg font-semibold text-gray-900" id="total-expenses">$1,150.00</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Current Balance -->
+            <div class="bg-white rounded-lg p-4 shadow-sm">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-balance-scale text-blue-600"></i>
+                        </div>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-500">Current Balance</p>
+                        <p class="text-lg font-semibold text-green-600" id="current-balance">+$50.00</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Participants -->
+            <div class="bg-white rounded-lg p-4 shadow-sm">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-users text-purple-600"></i>
+                        </div>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-500">Participants</p>
+                        <p class="text-lg font-semibold text-gray-900">4 people</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left Column: Expenses & Features -->
+        <div class="lg:col-span-2 space-y-8">
+            <!-- Quick Actions -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button onclick="showAddExpenseDemo()" class="bg-gradient-to-r from-red-500 to-red-600 text-white p-4 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 transform hover:scale-105">
+                    <div class="flex items-center justify-center space-x-2">
+                        <i class="fas fa-receipt text-lg"></i>
+                        <span class="font-medium">Add Expense (Demo)</span>
+                    </div>
+                </button>
+                
+                <button onclick="generateDemoSettlements()" class="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 transform hover:scale-105">
+                    <div class="flex items-center justify-center space-x-2">
+                        <i class="fas fa-calculator text-lg"></i>
+                        <span class="font-medium">Calculate Settlements</span>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Sample Expenses -->
+            <div class="bg-white rounded-lg border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Recent Expenses</h3>
+                    <p class="text-sm text-gray-500">Like Splitwise - expenses are automatically split</p>
+                </div>
+                
+                <div class="divide-y divide-gray-200" id="demo-expenses">
+                    <!-- Sample expenses will be populated here -->
+                </div>
+            </div>
+
+            <!-- Splitwise Features Demo -->
+            <div class="bg-white rounded-lg border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">🚀 Splitwise-like Features</h3>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-4 bg-blue-50 rounded-lg">
+                            <h4 class="font-medium text-blue-900 mb-2">✅ Smart Expense Splitting</h4>
+                            <p class="text-sm text-blue-700">Automatically split expenses equally or by custom amounts</p>
+                        </div>
+                        <div class="p-4 bg-green-50 rounded-lg">
+                            <h4 class="font-medium text-green-900 mb-2">💰 Balance Tracking</h4>
+                            <p class="text-sm text-green-700">See who owes what at a glance</p>
+                        </div>
+                        <div class="p-4 bg-purple-50 rounded-lg">
+                            <h4 class="font-medium text-purple-900 mb-2">🎯 Settlement Optimization</h4>
+                            <p class="text-sm text-purple-700">Minimize the number of transactions needed</p>
+                        </div>
+                        <div class="p-4 bg-yellow-50 rounded-lg">
+                            <h4 class="font-medium text-yellow-900 mb-2">📱 Real-time Updates</h4>
+                            <p class="text-sm text-yellow-700">Changes sync instantly across all devices</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Participants & Balances -->
+        <div class="space-y-8">
+            <!-- Participants -->
+            <div class="bg-white rounded-lg border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Participants</h3>
+                </div>
+                <div class="p-6">
+                    <div class="space-y-3" id="demo-participants">
+                        <!-- Participants will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Balances - Core Splitwise Feature -->
+            <div class="bg-white rounded-lg border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900">Balances</h3>
+                    <span class="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">Live Demo</span>
+                </div>
+                <div class="p-6">
+                    <div class="space-y-3" id="demo-balances">
+                        <!-- Balances will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settlements - Like "Settle Up" in Splitwise -->
+            <div class="bg-white rounded-lg border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Suggested Settlements</h3>
+                    <p class="text-xs text-gray-500">Optimized like Splitwise</p>
+                </div>
+                <div class="p-6">
+                    <div class="space-y-3" id="demo-settlements">
+                        <!-- Settlements will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Demo Modal -->
+<div id="demo-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl max-w-md w-full">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">Add Expense (Demo)</h3>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Amount</label>
+                <input id="demo-amount" type="number" step="0.01" placeholder="0.00" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <input id="demo-description" type="text" placeholder="What was this expense for?" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                <select id="demo-category" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                    <option value="food">🍽️ Food & Dining</option>
+                    <option value="transport">🚗 Transportation</option>
+                    <option value="accommodation">🏨 Accommodation</option>
+                    <option value="entertainment">🎬 Entertainment</option>
+                    <option value="other">📦 Other</option>
+                </select>
+            </div>
+            <div class="flex space-x-3 pt-4">
+                <button onclick="closeDemoModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button onclick="addDemoExpense()" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                    Add Expense
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Demo data
+let demoExpenses = [
+    { id: 1, description: "Hotel booking", amount: 400, category: "🏨", submittedBy: "Alex", date: "2025-08-20", status: "approved" },
+    { id: 2, description: "Flight tickets", amount: 600, category: "🚗", submittedBy: "Sarah", date: "2025-08-21", status: "approved" },
+    { id: 3, description: "Dinner at beachside restaurant", amount: 150, category: "🍽️", submittedBy: "Mike", date: "2025-08-22", status: "pending" }
+];
+
+let demoParticipants = [
+    { name: "Alex Johnson", initial: "A", role: "owner" },
+    { name: "Sarah Wilson", initial: "S", role: "participant" },
+    { name: "Mike Chen", initial: "M", role: "participant" },
+    { name: "Emma Davis", initial: "E", role: "participant" }
+];
+
+let demoBalances = [
+    { name: "Alex Johnson", balance: 75.00 },
+    { name: "Sarah Wilson", balance: 162.50 },
+    { name: "Mike Chen", balance: -37.50 },
+    { name: "Emma Davis", balance: -200.00 }
+];
+
+let demoSettlements = [
+    { from: "Emma Davis", to: "Sarah Wilson", amount: 162.50, status: "pending" },
+    { from: "Mike Chen", to: "Alex Johnson", amount: 37.50, status: "pending" }
+];
+
+// Initialize demo
+document.addEventListener('DOMContentLoaded', function() {
+    displayDemoExpenses();
+    displayDemoParticipants();
+    displayDemoBalances();
+    displayDemoSettlements();
+});
+
+function displayDemoExpenses() {
+    const container = document.getElementById('demo-expenses');
+    container.innerHTML = demoExpenses.map(expense => `
+        <div class="px-6 py-4 hover:bg-gray-50 cursor-pointer demo-expense" onclick="showExpenseDetails(${expense.id})">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                        <span class="text-lg">${expense.category}</span>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">${expense.description}</p>
+                        <p class="text-xs text-gray-500">by ${expense.submittedBy} • ${formatDemoDate(expense.date)}</p>
+                        <p class="text-xs text-blue-600">Split equally among 4 people</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-semibold text-gray-900">$${expense.amount.toFixed(2)}</p>
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusClass(expense.status)}">
+                        ${expense.status}
+                    </span>
+                    <p class="text-xs text-gray-500">$${(expense.amount / 4).toFixed(2)} per person</p>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function displayDemoParticipants() {
+    const container = document.getElementById('demo-participants');
+    container.innerHTML = demoParticipants.map(participant => `
+        <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <span class="text-sm font-medium text-blue-600">${participant.initial}</span>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-medium text-gray-900">${participant.name}</p>
+                <p class="text-xs text-gray-500">${participant.role}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+function displayDemoBalances() {
+    const container = document.getElementById('demo-balances');
+    container.innerHTML = demoBalances.map(balance => `
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                    <span class="text-sm font-medium text-gray-600">${balance.name[0]}</span>
+                </div>
+                <span class="text-sm font-medium text-gray-900">${balance.name}</span>
+            </div>
+            <div class="text-right">
+                <span class="text-sm font-semibold ${balance.balance >= 0 ? 'text-green-600' : 'text-red-600'}">
+                    ${balance.balance >= 0 ? '+' : ''}$${Math.abs(balance.balance).toFixed(2)}
+                </span>
+                <div class="text-xs text-gray-500">
+                    ${balance.balance >= 0 ? 'gets back' : 'owes'}
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function displayDemoSettlements() {
+    const container = document.getElementById('demo-settlements');
+    if (demoSettlements.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-gray-500">
+                <i class="fas fa-handshake text-2xl mb-2 opacity-50"></i>
+                <p>All settled up! 🎉</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = demoSettlements.map(settlement => `
+        <div class="p-3 bg-blue-50 rounded-lg">
+            <div class="flex items-center justify-between">
+                <div class="text-sm">
+                    <span class="font-medium">${settlement.from}</span>
+                    <span class="text-gray-600"> owes </span>
+                    <span class="font-medium">${settlement.to}</span>
+                </div>
+                <div class="text-sm font-semibold text-blue-600">
+                    $${settlement.amount.toFixed(2)}
+                </div>
+            </div>
+            <div class="mt-2 flex items-center justify-between">
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                    ${settlement.status}
+                </span>
+                <button onclick="markSettlementPaid('${settlement.from}', '${settlement.to}')" class="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">
+                    Mark as Paid
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Demo functions
+function showAddExpenseDemo() {
+    document.getElementById('demo-modal').classList.remove('hidden');
+}
+
+function closeDemoModal() {
+    document.getElementById('demo-modal').classList.add('hidden');
+    // Clear form
+    document.getElementById('demo-amount').value = '';
+    document.getElementById('demo-description').value = '';
+}
+
+function addDemoExpense() {
+    const amount = parseFloat(document.getElementById('demo-amount').value);
+    const description = document.getElementById('demo-description').value;
+    const categorySelect = document.getElementById('demo-category');
+    const categoryIcon = categorySelect.options[categorySelect.selectedIndex].text.split(' ')[0];
+    
+    if (!amount || !description) {
+        showDemoToast('Please fill in all fields', 'error');
+        return;
+    }
+    
+    const newExpense = {
+        id: demoExpenses.length + 1,
+        description: description,
+        amount: amount,
+        category: categoryIcon,
+        submittedBy: "You",
+        date: new Date().toISOString().split('T')[0],
+        status: "pending"
+    };
+    
+    demoExpenses.unshift(newExpense);
+    
+    // Update totals
+    updateDemoTotals();
+    
+    // Refresh displays
+    displayDemoExpenses();
+    
+    // Close modal
+    closeDemoModal();
+    
+    showDemoToast('Expense added! Split equally among 4 people 💰', 'success');
+}
+
+function generateDemoSettlements() {
+    showDemoToast('Calculating optimal settlements... 🤔', 'info');
+    
+    setTimeout(() => {
+        showDemoToast('Settlements optimized! Only 2 transactions needed 🎯', 'success');
+        displayDemoSettlements();
+    }, 1500);
+}
+
+function markSettlementPaid(from, to) {
+    demoSettlements = demoSettlements.filter(s => !(s.from === from && s.to === to));
+    displayDemoSettlements();
+    showDemoToast('Settlement marked as paid! ✅', 'success');
+}
+
+function updateDemoTotals() {
+    const totalExpenses = demoExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    document.getElementById('total-expenses').textContent = `$${totalExpenses.toFixed(2)}`;
+}
+
+// Utility functions
+function formatDemoDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function getStatusClass(status) {
+    switch (status) {
+        case 'approved':
+            return 'bg-green-100 text-green-800';
+        case 'pending':
+            return 'bg-yellow-100 text-yellow-800';
+        case 'rejected':
+            return 'bg-red-100 text-red-800';
+        default:
+            return 'bg-gray-100 text-gray-800';
+    }
+}
+
+function showExpenseDetails(expenseId) {
+    const expense = demoExpenses.find(e => e.id === expenseId);
+    if (expense) {
+        showDemoToast(`${expense.description}: $${expense.amount} split 4 ways = $${(expense.amount/4).toFixed(2)} each`, 'info');
+    }
+}
+
+function showDemoToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 p-4 rounded-lg text-white z-50 shadow-lg transform transition-all duration-300 ${
+        type === 'error' ? 'bg-red-500' : 
+        type === 'success' ? 'bg-green-500' : 
+        type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
+    }`;
+    
+    const icon = type === 'error' ? '❌' : 
+                type === 'success' ? '✅' : 
+                type === 'warning' ? '⚠️' : 'ℹ️';
+    
+    toast.innerHTML = `
+        <div class="flex items-center space-x-2 max-w-sm">
+            <span class="text-lg">${icon}</span>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+</script>
+
+</body>
+</html>
+
