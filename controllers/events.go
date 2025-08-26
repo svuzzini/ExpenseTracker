@@ -4,6 +4,7 @@ import (
 	"expense-tracker/database"
 	"expense-tracker/middleware"
 	"expense-tracker/models"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -282,7 +283,7 @@ func (ec *EventController) GetUserEvents(c *gin.Context) {
 
 // GetEventDetails returns detailed information about an event
 func (ec *EventController) GetEventDetails(c *gin.Context) {
-	eventID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	eventID, err := strconv.ParseUint(c.Param("eventId"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid event ID",
@@ -329,12 +330,38 @@ func (ec *EventController) GetEventDetails(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, event)
+	// Debug: Log the participation details
+	fmt.Printf("DEBUG: User %d role in event %d: %s\n", user.ID, eventID, participation.Role)
+
+	// Add user's role to the response
+	response := gin.H{
+		"id":                  event.ID,
+		"name":                event.Name,
+		"description":         event.Description,
+		"code":                event.Code,
+		"created_by":          event.CreatedBy,
+		"created_at":          event.CreatedAt,
+		"updated_at":          event.UpdatedAt,
+		"currency":            event.Currency,
+		"status":              event.Status,
+		"total_contributions": event.TotalContributions,
+		"total_expenses":      event.TotalExpenses,
+		"end_date":            event.EndDate,
+		"require_approval":    event.RequireApproval,
+		"auto_approval_limit": event.AutoApprovalLimit,
+		"creator":             event.Creator,
+		"participants":        event.Participants,
+		"contributions":       event.Contributions,
+		"expenses":            event.Expenses,
+		"user_role":           participation.Role,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // GetEventSummary returns a summary of event data
 func (ec *EventController) GetEventSummary(c *gin.Context) {
-	eventID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	eventID, err := strconv.ParseUint(c.Param("eventId"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid event ID",
@@ -398,7 +425,7 @@ func (ec *EventController) GetEventSummary(c *gin.Context) {
 
 // AddContribution adds a contribution to an event
 func (ec *EventController) AddContribution(c *gin.Context) {
-	eventID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	eventID, err := strconv.ParseUint(c.Param("eventId"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid event ID",
@@ -499,7 +526,7 @@ func (ec *EventController) AddContribution(c *gin.Context) {
 
 // UpdateEvent updates event details (admin only)
 func (ec *EventController) UpdateEvent(c *gin.Context) {
-	eventID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	eventID, err := strconv.ParseUint(c.Param("eventId"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid event ID",

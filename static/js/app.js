@@ -656,7 +656,7 @@ class ExpenseTrackerApp {
 
         try {
             showLoading();
-            const response = await apiCall(`/api/v1/events/${this.eventId}/settlements/generate`, {
+            const response = await apiCall(`/api/v1/settlements/event/${this.eventId}/generate`, {
                 method: 'POST'
             });
 

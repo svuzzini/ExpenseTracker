@@ -286,8 +286,10 @@ async function refreshAllData() {
 }
 
 // Core Splitwise feature - Generate optimal settlements
-async function generateSettlements() {
+async function generateSettlementsFromFeatures() {
     try {
+        console.log('DEBUG: generateSettlements function called');
+        console.log('DEBUG: eventId =', eventId);
         showToast('Calculating optimal settlements...', 'info');
         
         const response = await apiCall(`/api/v1/settlements/event/${eventId}/generate`, {
@@ -304,9 +306,12 @@ async function generateSettlements() {
             showToast(error.error || 'Failed to generate settlements', 'error');
         }
     } catch (error) {
+        console.error('DEBUG: Error in generateSettlementsFromFeatures:', error);
         showToast('Failed to generate settlements', 'error');
     }
 }
+
+// Note: generateSettlements function is now defined in the template to avoid conflicts
 
 // Mark settlement as paid - like Splitwise
 async function markSettlementPaid(settlementId) {
@@ -366,9 +371,301 @@ function refreshContributions() {
     loadContributions();
 }
 
-function showExpenseDetails(expenseId) {
-    // TODO: Implement expense details modal with split breakdown
-    showToast('Expense details - Coming soon!', 'info');
+async function showExpenseDetails(expenseId) {
+    const token = localStorage.getItem('token');
+    
+    // Check if token exists
+    if (!token) {
+        showToast('Please log in to view expense details', 'error');
+        return;
+    }
+    
+    // Make sure we have the user role
+    if (currentUserRole === null && typeof getCurrentUserRole === 'function') {
+        console.log('Loading user role first...');
+        await getCurrentUserRole();
+    }
+    
+    console.log('Fetching expense details for ID:', expenseId);
+    
+    try {
+        const response = await fetch(`/api/v1/expenses/${expenseId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        console.log('Response status:', response.status);
+        
+        if (response.status === 401) {
+            throw new Error('Authentication failed. Please log in again.');
+        }
+        
+        if (response.status === 403) {
+            throw new Error('You do not have permission to view this expense.');
+        }
+        
+        if (response.status === 404) {
+            throw new Error('Expense not found.');
+        }
+        
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+        
+        const expense = await response.json();
+        console.log('Expense data received:', expense);
+        showExpenseModal(expense);
+    } catch (error) {
+        console.error('Error fetching expense details:', error);
+        showToast(error.message || 'Failed to load expense details', 'error');
+    }
+}
+
+function showExpenseModal(expense) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+    
+    // Check if user can approve this expense
+    const canApprove = expense.status === 'pending' && (currentUserRole === 'owner' || currentUserRole === 'admin');
+    
+    console.log('Expense status:', expense.status, 'User role:', currentUserRole, 'Can approve:', canApprove);
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg max-w-2xl w-full max-h-90vh overflow-y-auto">
+            <div class="p-6 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Expense Details</h3>
+                <button onclick="closeExpenseModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <!-- Expense Info -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-500 mb-2">Basic Information</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <span class="text-sm text-gray-500">Description:</span>
+                                <p class="font-medium">${expense.description}</p>
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500">Amount:</span>
+                                <p class="font-medium text-lg">${formatCurrency(expense.amount, expense.currency)}</p>
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500">Date:</span>
+                                <p class="font-medium">${formatDate(expense.date)}</p>
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500">Status:</span>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(expense.status)}">
+                                    ${expense.status}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-500 mb-2">Additional Details</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <span class="text-sm text-gray-500">Submitted by:</span>
+                                <p class="font-medium">${expense.submitter?.username || 'Unknown'}</p>
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-500">Category:</span>
+                                <p class="font-medium">${expense.category?.name || 'Uncategorized'}</p>
+                            </div>
+                            ${expense.location ? `
+                            <div>
+                                <span class="text-sm text-gray-500">Location:</span>
+                                <p class="font-medium">${expense.location}</p>
+                            </div>
+                            ` : ''}
+                            ${expense.vendor ? `
+                            <div>
+                                <span class="text-sm text-gray-500">Vendor:</span>
+                                <p class="font-medium">${expense.vendor}</p>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Expense Shares -->
+                ${expense.shares && expense.shares.length > 0 ? `
+                <div class="mb-6">
+                    <h4 class="text-sm font-medium text-gray-500 mb-3">Expense Split</h4>
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <div class="space-y-2">
+                            ${expense.shares.map(share => `
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm">${share.user?.username || 'Unknown'}</span>
+                                    <span class="text-sm font-medium">${formatCurrency(share.amount, expense.currency)} (${share.percentage}%)</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+                
+                <!-- Notes -->
+                ${expense.notes ? `
+                <div class="mb-6">
+                    <h4 class="text-sm font-medium text-gray-500 mb-2">Notes</h4>
+                    <p class="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">${expense.notes}</p>
+                </div>
+                ` : ''}
+                
+                <!-- Rejection Reason -->
+                ${expense.status === 'rejected' && expense.rejection_reason ? `
+                <div class="mb-6">
+                    <h4 class="text-sm font-medium text-red-600 mb-2">Rejection Reason</h4>
+                    <p class="text-sm text-red-700 bg-red-50 rounded-lg p-3">${expense.rejection_reason}</p>
+                </div>
+                ` : ''}
+            </div>
+            
+            <!-- Action Buttons -->
+            ${canApprove ? `
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <button onclick="approveExpense(${expense.id})" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-150">
+                        <i class="fas fa-check mr-2"></i>Approve
+                    </button>
+                    <button onclick="showRejectModal(${expense.id})" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition duration-150">
+                        <i class="fas fa-times mr-2"></i>Reject
+                    </button>
+                </div>
+                <button onclick="closeExpenseModal()" class="text-gray-500 hover:text-gray-700 px-4 py-2">
+                    Close
+                </button>
+            </div>
+            ` : `
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+                <button onclick="closeExpenseModal()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition duration-150">
+                    Close
+                </button>
+            </div>
+            `}
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function closeExpenseModal() {
+    const modal = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function approveExpense(expenseId) {
+    fetch(`/api/v1/expenses/${expenseId}/review`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+            action: 'approve'
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to approve expense');
+        }
+        return response.json();
+    })
+    .then(data => {
+        showToast('Expense approved successfully!', 'success');
+        closeExpenseModal();
+        // Refresh the expenses list and balances
+        if (typeof loadExpenses === 'function') loadExpenses();
+        if (typeof viewBalances === 'function') viewBalances();
+    })
+    .catch(error => {
+        console.error('Error approving expense:', error);
+        showToast('Failed to approve expense', 'error');
+    });
+}
+
+function showRejectModal(expenseId) {
+    const rejectModal = document.createElement('div');
+    rejectModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60 p-4';
+    
+    rejectModal.innerHTML = `
+        <div class="bg-white rounded-lg max-w-md w-full">
+            <div class="p-6 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">Reject Expense</h3>
+            </div>
+            
+            <div class="p-6">
+                <p class="text-sm text-gray-600 mb-4">Please provide a reason for rejecting this expense:</p>
+                <textarea id="rejection-reason" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Enter rejection reason..."></textarea>
+            </div>
+            
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end space-x-3">
+                <button onclick="closeRejectModal()" class="text-gray-500 hover:text-gray-700 px-4 py-2">
+                    Cancel
+                </button>
+                <button onclick="rejectExpense(${expenseId})" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition duration-150">
+                    Reject Expense
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(rejectModal);
+}
+
+function closeRejectModal() {
+    const modal = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50.z-60');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function rejectExpense(expenseId) {
+    const reason = document.getElementById('rejection-reason').value.trim();
+    
+    if (!reason) {
+        showToast('Please provide a rejection reason', 'error');
+        return;
+    }
+    
+    fetch(`/api/v1/expenses/${expenseId}/review`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+            action: 'reject',
+            rejection_reason: reason
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to reject expense');
+        }
+        return response.json();
+    })
+    .then(data => {
+        showToast('Expense rejected', 'warning');
+        closeRejectModal();
+        closeExpenseModal();
+        // Refresh the expenses list and balances
+        if (typeof loadExpenses === 'function') loadExpenses();
+        if (typeof viewBalances === 'function') viewBalances();
+    })
+    .catch(error => {
+        console.error('Error rejecting expense:', error);
+        showToast('Failed to reject expense', 'error');
+    });
 }
 
 // Event sharing

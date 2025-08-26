@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - ExpenseTracker</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/static/css/swiss-design.css">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.css">
+    
+    <style>
+        /* Page-specific styles */
+        .hero-section {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            pointer-events: none;
+        }
+        
+        .metric-card {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+            transition: all var(--transition-base);
+        }
+        
+        .metric-card:hover::before {
+            background: linear-gradient(135deg, var(--color-success) 0%, #22c55e 100%);
+            width: 6px;
+        }
+        
+        .event-card {
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .event-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+            border-radius: var(--border-radius);
+            transform: scaleX(0);
+            transition: transform var(--transition-base);
+        }
+        
+        .event-card:hover::after {
+            transform: scaleX(1);
+        }
+        
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--space-8);
+        }
+        
+        .action-card {
+            padding: var(--space-8);
+            text-align: center;
+            transition: all var(--transition-base);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .action-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0,0,0,0.03), transparent);
+            transition: left var(--transition-slow);
+        }
+        
+        .action-card:hover::before {
+            left: 100%;
+        }
+        
+        .loading-shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">
+                <div class="nav-logo">
+                    <i data-lucide="receipt"></i>
+                </div>
+                ExpenseTracker
+            </a>
+            
+            <div class="nav-actions">
+                <div class="nav-user">
+                    <div class="user-avatar">
+                        <i data-lucide="user"></i>
+                    </div>
+                    <span id="user-name" class="body-small">Loading...</span>
+                </div>
+                <button id="logout-btn" class="btn btn-ghost btn-sm">
+                    <i data-lucide="log-out"></i>
+                    Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section section-sm">
+        <div class="container">
+            <div class="flex flex-col items-center text-center gap-6">
+                <h1 class="heading-1" style="color: white;">Welcome back</h1>
+                <p class="body-large opacity-80">Track expenses, split bills, and settle up with ease.</p>
+                
+                <!-- Quick Stats -->
+                <div class="grid grid-4" style="margin-top: var(--space-16); width: 100%; max-width: 800px;">
+                    <div class="metric-card card animate-fade-in" style="animation-delay: 0.1s;">
+                        <div class="card-body text-center">
+                            <div class="heading-3" id="total-events">—</div>
+                            <div class="body-small opacity-60">Active Events</div>
+                        </div>
+                    </div>
+                    <div class="metric-card card animate-fade-in" style="animation-delay: 0.2s;">
+                        <div class="card-body text-center">
+                            <div class="heading-3" id="total-expenses">—</div>
+                            <div class="body-small opacity-60">Expenses</div>
+                        </div>
+                    </div>
+                    <div class="metric-card card animate-fade-in" style="animation-delay: 0.3s;">
+                        <div class="card-body text-center">
+                            <div class="heading-3" id="pending-settlements">—</div>
+                            <div class="body-small opacity-60">Settlements</div>
+                        </div>
+                    </div>
+                    <div class="metric-card card animate-fade-in" style="animation-delay: 0.4s;">
+                        <div class="card-body text-center">
+                            <div class="heading-3" id="balance-owed">—</div>
+                            <div class="body-small opacity-60">You Owe</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="section">
+        <div class="container">
+            <!-- Quick Actions -->
+            <section class="mb-16">
+                <h2 class="heading-3 mb-8 text-center">Quick Actions</h2>
+                
+                <div class="action-grid">
+                    <div class="action-card card animate-slide-in" style="animation-delay: 0.1s;">
+                        <div class="mb-6">
+                            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: var(--border-radius-2xl); display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: var(--shadow-sm);">
+                                <i data-lucide="plus" style="width: 24px; height: 24px; color: var(--color-primary);"></i>
+                            </div>
+                        </div>
+                        <h3 class="heading-5 mb-2">Create Event</h3>
+                        <p class="body-small opacity-80 mb-6">Start a new expense-sharing event with friends or colleagues.</p>
+                        <button class="btn btn-primary w-full" onclick="showCreateEventModal()">
+                            Create Event
+                        </button>
+                    </div>
+                    
+                    <div class="action-card card animate-slide-in" style="animation-delay: 0.2s;">
+                        <div class="mb-6">
+                            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: var(--border-radius-2xl); display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: var(--shadow-sm);">
+                                <i data-lucide="users" style="width: 24px; height: 24px; color: var(--color-success);"></i>
+                            </div>
+                        </div>
+                        <h3 class="heading-5 mb-2">Join Event</h3>
+                        <p class="body-small opacity-80 mb-6">Join an existing event using an invitation code.</p>
+                        <button class="btn btn-secondary w-full" onclick="showJoinEventModal()">
+                            Join Event
+                        </button>
+                    </div>
+                    
+                    <div class="action-card card animate-slide-in" style="animation-delay: 0.3s;">
+                        <div class="mb-6">
+                            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-radius: var(--border-radius-2xl); display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: var(--shadow-sm);">
+                                <i data-lucide="receipt" style="width: 24px; height: 24px; color: var(--color-warning);"></i>
+                            </div>
+                        </div>
+                        <h3 class="heading-5 mb-2">Quick Expense</h3>
+                        <p class="body-small opacity-80 mb-6">Add an expense to your most recent event.</p>
+                        <button class="btn btn-secondary w-full" onclick="addQuickExpense()">
+                            Add Expense
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Events -->
+            <section class="mb-16">
+                <div class="flex justify-between items-center mb-8">
+                    <h2 class="heading-3">Your Events</h2>
+                    <button class="btn btn-ghost" onclick="refreshEvents()">
+                        <i data-lucide="refresh-cw"></i>
+                        Refresh
+                    </button>
+                </div>
+                
+                <div id="events-container" class="grid grid-auto">
+                    <!-- Events will be loaded here -->
+                    <div class="card loading-skeleton" style="height: 200px;"></div>
+                    <div class="card loading-skeleton" style="height: 200px;"></div>
+                    <div class="card loading-skeleton" style="height: 200px;"></div>
+                </div>
+                
+                <div id="no-events" class="text-center p-8" style="display: none;">
+                    <div style="width: 80px; height: 80px; background: var(--color-gray-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-6);">
+                        <i data-lucide="calendar" style="width: 32px; height: 32px; color: var(--color-gray-400);"></i>
+                    </div>
+                    <h3 class="heading-4 mb-2">No events yet</h3>
+                    <p class="body-base opacity-80 mb-6">Create your first event to start tracking expenses.</p>
+                    <button class="btn btn-primary" onclick="showCreateEventModal()">
+                        Create Your First Event
+                    </button>
+                </div>
+            </section>
+
+            <!-- Recent Activity -->
+            <section>
+                <h2 class="heading-3 mb-8">Recent Activity</h2>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <div id="activity-feed">
+                            <!-- Activity items will be loaded here -->
+                            <div class="flex items-center gap-4 p-4 border-b border-gray-100 loading-skeleton" style="height: 60px;"></div>
+                            <div class="flex items-center gap-4 p-4 border-b border-gray-100 loading-skeleton" style="height: 60px;"></div>
+                            <div class="flex items-center gap-4 p-4 loading-skeleton" style="height: 60px;"></div>
+                        </div>
+                        
+                        <div id="no-activity" class="text-center p-8" style="display: none;">
+                            <div style="width: 64px; height: 64px; background: var(--color-gray-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                                <i data-lucide="activity" style="width: 24px; height: 24px; color: var(--color-gray-400);"></i>
+                            </div>
+                            <p class="body-base opacity-80">No recent activity to show.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <!-- Create Event Modal -->
+    <div id="create-event-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="heading-4">Create New Event</h3>
+                <button class="btn btn-ghost btn-sm" onclick="closeModal('create-event-modal')">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            
+            <form id="create-event-form" class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="event-name">Event Name</label>
+                    <input type="text" id="event-name" class="form-input" placeholder="e.g., Weekend Trip to Paris" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="event-description">Description</label>
+                    <textarea id="event-description" class="form-input" rows="3" placeholder="Brief description of the event..."></textarea>
+                </div>
+                
+                <div class="grid grid-2 gap-4">
+                    <div class="form-group">
+                        <label class="form-label" for="event-currency">Currency</label>
+                        <select id="event-currency" class="form-select" required>
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                            <option value="CAD">CAD ($)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="event-category">Category</label>
+                        <select id="event-category" class="form-select">
+                            <option value="travel">Travel</option>
+                            <option value="dining">Dining</option>
+                            <option value="entertainment">Entertainment</option>
+                            <option value="household">Household</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('create-event-modal')">Cancel</button>
+                <button type="submit" form="create-event-form" class="btn btn-primary">Create Event</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Join Event Modal -->
+    <div id="join-event-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="heading-4">Join Event</h3>
+                <button class="btn btn-ghost btn-sm" onclick="closeModal('join-event-modal')">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            
+            <form id="join-event-form" class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="event-code">Event Code</label>
+                    <input type="text" id="event-code" class="form-input" placeholder="Enter 6-digit event code" required maxlength="6" style="text-transform: uppercase; letter-spacing: 0.1em;">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="display-name">Your Display Name</label>
+                    <input type="text" id="display-name" class="form-input" placeholder="How others will see you in this event" required>
+                </div>
+            </form>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('join-event-modal')">Cancel</button>
+                <button type="submit" form="join-event-form" class="btn btn-primary">Join Event</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: var(--space-4);
+            backdrop-filter: blur(4px);
+        }
+        
+        .modal-container {
+            background: var(--color-white);
+            border-radius: var(--border-radius-xl);
+            box-shadow: var(--shadow-lg);
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: hidden;
+            animation: modalEnter 0.3s ease-out;
+        }
+        
+        @keyframes modalEnter {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        
+        .modal-header {
+            padding: var(--space-6);
+            border-bottom: var(--border-width) solid var(--color-gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .modal-body {
+            padding: var(--space-6);
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .modal-footer {
+            padding: var(--space-6);
+            border-top: var(--border-width) solid var(--color-gray-200);
+            display: flex;
+            gap: var(--space-3);
+            justify-content: flex-end;
+        }
+    </style>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        // Global state
+        let currentUser = null;
+        let userEvents = [];
+        let userStats = {};
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+        });
+        
+        async function initializeDashboard() {
+            try {
+                // Load user profile
+                await loadUserProfile();
+                
+                // Load dashboard data
+                await Promise.all([
+                    loadUserStats(),
+                    loadUserEvents(),
+                    loadRecentActivity()
+                ]);
+                
+                // Set up event listeners
+                setupEventListeners();
+                
+            } catch (error) {
+                console.error('Failed to initialize dashboard:', error);
+                showErrorMessage('Failed to load dashboard data');
+            }
+        }
+        
+        async function loadUserProfile() {
+            try {
+                const response = await apiCall('/api/v1/auth/profile');
+                if (response.ok) {
+                    currentUser = await response.json();
+                    document.getElementById('user-name').textContent = currentUser.display_name || currentUser.username;
+                }
+            } catch (error) {
+                console.error('Failed to load user profile:', error);
+            }
+        }
+        
+        async function loadUserStats() {
+            try {
+                // This would typically come from a dedicated stats endpoint
+                // For now, we'll calculate from events and expenses
+                const stats = {
+                    totalEvents: 0,
+                    totalExpenses: 0,
+                    pendingSettlements: 0,
+                    balanceOwed: 0
+                };
+                
+                // Update UI
+                document.getElementById('total-events').textContent = stats.totalEvents;
+                document.getElementById('total-expenses').textContent = stats.totalExpenses;
+                document.getElementById('pending-settlements').textContent = stats.pendingSettlements;
+                document.getElementById('balance-owed').textContent = `$${stats.balanceOwed.toFixed(2)}`;
+                
+                userStats = stats;
+            } catch (error) {
+                console.error('Failed to load user stats:', error);
+            }
+        }
+        
+        async function loadUserEvents() {
+            const container = document.getElementById('events-container');
+            const noEventsEl = document.getElementById('no-events');
+            
+            try {
+                const response = await apiCall('/api/v1/events/');
+                if (response.ok) {
+                    userEvents = await response.json();
+                    
+                    if (userEvents.length === 0) {
+                        container.style.display = 'none';
+                        noEventsEl.style.display = 'block';
+                    } else {
+                        container.style.display = 'grid';
+                        noEventsEl.style.display = 'none';
+                        renderEvents();
+                    }
+                    
+                    // Update stats
+                    updateStatsFromEvents();
+                }
+            } catch (error) {
+                console.error('Failed to load events:', error);
+                container.innerHTML = '<div class="card"><div class="card-body text-center"><p class="body-base text-red-600">Failed to load events</p></div></div>';
+            }
+        }
+        
+        function renderEvents() {
+            const container = document.getElementById('events-container');
+            
+            container.innerHTML = userEvents.map((event, index) => {
+                const statusColor = event.status === 'active' ? 'success' : 
+                                  event.status === 'completed' ? 'info' : 'pending';
+                
+                return `
+                    <div class="event-card card animate-fade-in" style="animation-delay: ${index * 0.1}s;" onclick="openEvent('${event.id}')">
+                        <div class="card-header">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="heading-5 mb-1">${event.name}</h3>
+                                    <p class="body-small opacity-60">${event.description || 'No description'}</p>
+                                </div>
+                                <span class="status-badge status-${statusColor}">${event.status}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body">
+                            <div class="grid grid-2 gap-4 mb-4">
+                                <div>
+                                    <div class="body-small opacity-60">Total Expenses</div>
+                                    <div class="heading-5">$${(event.total_expenses || 0).toFixed(2)}</div>
+                                </div>
+                                <div>
+                                    <div class="body-small opacity-60">Participants</div>
+                                    <div class="heading-5">${event.participant_count || 0}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-between items-center">
+                                <div class="body-small opacity-60">
+                                    Created ${new Date(event.created_at).toLocaleDateString()}
+                                </div>
+                                <div class="flex gap-2">
+                                    <span class="caption">Code: ${event.code}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        async function loadRecentActivity() {
+            const container = document.getElementById('activity-feed');
+            const noActivityEl = document.getElementById('no-activity');
+            
+            try {
+                // This would typically come from an activity feed endpoint
+                // For now, we'll show a placeholder
+                container.innerHTML = '';
+                noActivityEl.style.display = 'block';
+            } catch (error) {
+                console.error('Failed to load activity:', error);
+            }
+        }
+        
+        function updateStatsFromEvents() {
+            const stats = userEvents.reduce((acc, event) => {
+                acc.totalEvents++;
+                acc.totalExpenses += event.total_expenses || 0;
+                return acc;
+            }, { totalEvents: 0, totalExpenses: 0, pendingSettlements: 0, balanceOwed: 0 });
+            
+            document.getElementById('total-events').textContent = stats.totalEvents;
+            document.getElementById('total-expenses').textContent = stats.totalExpenses;
+        }
+        
+        function setupEventListeners() {
+            // Logout button
+            document.getElementById('logout-btn').addEventListener('click', logout);
+            
+            // Form submissions
+            document.getElementById('create-event-form').addEventListener('submit', handleCreateEvent);
+            document.getElementById('join-event-form').addEventListener('submit', handleJoinEvent);
+            
+            // Modal close on overlay click
+            document.querySelectorAll('.modal-overlay').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.style.display = 'none';
+                    }
+                });
+            });
+        }
+        
+        // Modal functions
+        function showCreateEventModal() {
+            document.getElementById('create-event-modal').style.display = 'flex';
+            document.getElementById('event-name').focus();
+        }
+        
+        function showJoinEventModal() {
+            document.getElementById('join-event-modal').style.display = 'flex';
+            document.getElementById('event-code').focus();
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+        
+        // Event handlers
+        async function handleCreateEvent(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const eventData = {
+                name: document.getElementById('event-name').value,
+                description: document.getElementById('event-description').value,
+                currency: document.getElementById('event-currency').value,
+                category: document.getElementById('event-category').value
+            };
+            
+            try {
+                const response = await apiCall('/api/v1/events/', {
+                    method: 'POST',
+                    body: JSON.stringify(eventData)
+                });
+                
+                if (response.ok) {
+                    const newEvent = await response.json();
+                    closeModal('create-event-modal');
+                    showSuccessMessage('Event created successfully!');
+                    
+                    // Refresh events
+                    await loadUserEvents();
+                    
+                    // Navigate to new event
+                    setTimeout(() => {
+                        openEvent(newEvent.id);
+                    }, 1000);
+                } else {
+                    const error = await response.json();
+                    showErrorMessage(error.error || 'Failed to create event');
+                }
+            } catch (error) {
+                console.error('Error creating event:', error);
+                showErrorMessage('Failed to create event');
+            }
+        }
+        
+        async function handleJoinEvent(e) {
+            e.preventDefault();
+            
+            const eventCode = document.getElementById('event-code').value;
+            const displayName = document.getElementById('display-name').value;
+            
+            try {
+                const response = await apiCall('/api/v1/events/join', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        code: eventCode,
+                        display_name: displayName
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    closeModal('join-event-modal');
+                    showSuccessMessage('Successfully joined event!');
+                    
+                    // Refresh events
+                    await loadUserEvents();
+                    
+                    // Navigate to joined event
+                    setTimeout(() => {
+                        openEvent(result.event_id);
+                    }, 1000);
+                } else {
+                    const error = await response.json();
+                    showErrorMessage(error.error || 'Failed to join event');
+                }
+            } catch (error) {
+                console.error('Error joining event:', error);
+                showErrorMessage('Failed to join event');
+            }
+        }
+        
+        function openEvent(eventId) {
+            window.location.href = `/event-details?id=${eventId}`;
+        }
+        
+        function addQuickExpense() {
+            if (userEvents.length === 0) {
+                showErrorMessage('Create an event first to add expenses');
+                return;
+            }
+            
+            // Navigate to most recent event
+            const mostRecentEvent = userEvents[0];
+            openEvent(mostRecentEvent.id);
+        }
+        
+        async function refreshEvents() {
+            await loadUserEvents();
+            showSuccessMessage('Events refreshed');
+        }
+        
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/';
+        }
+        
+        // Utility functions
+        function showSuccessMessage(message) {
+            // Simple toast notification
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+        
+        function showErrorMessage(message) {
+            // Simple toast notification
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg z-50';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+        
+        // API helper
+        async function apiCall(url, options = {}) {
+            const token = localStorage.getItem('token');
+            const defaultOptions = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` }),
+                    ...options.headers
+                }
+            };
+            
+            return fetch(url, { ...defaultOptions, ...options });
+        }
+    </script>
+</body>
+</html>

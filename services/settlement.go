@@ -36,10 +36,10 @@ func (s *SettlementService) CalculateUserBalances(eventID uint) ([]models.UserBa
 			Select("COALESCE(SUM(amount), 0)").
 			Scan(&totalContributions)
 
-		// Calculate total approved expenses
+		// Calculate total expenses (approved and pending)
 		var totalExpenses decimal.Decimal
 		database.DB.Model(&models.Expense{}).
-			Where("event_id = ? AND submitted_by = ? AND status = ?", eventID, p.UserID, "approved").
+			Where("event_id = ? AND submitted_by = ? AND status IN (?)", eventID, p.UserID, []string{"approved", "pending"}).
 			Select("COALESCE(SUM(amount), 0)").
 			Scan(&totalExpenses)
 
@@ -47,12 +47,12 @@ func (s *SettlementService) CalculateUserBalances(eventID uint) ([]models.UserBa
 		var totalEventExpenses decimal.Decimal
 		database.DB.Model(&models.ExpenseShare{}).
 			Joins("JOIN expenses ON expense_shares.expense_id = expenses.id").
-			Where("expenses.event_id = ? AND expense_shares.user_id = ? AND expenses.status = ?",
-				eventID, p.UserID, "approved").
+			Where("expenses.event_id = ? AND expense_shares.user_id = ? AND expenses.status IN (?)",
+				eventID, p.UserID, []string{"approved", "pending"}).
 			Select("COALESCE(SUM(expense_shares.amount), 0)").
 			Scan(&totalEventExpenses)
 
-		netBalance := totalContributions.Sub(totalEventExpenses)
+		netBalance := totalContributions.Add(totalExpenses).Sub(totalEventExpenses)
 
 		var owesAmount decimal.Decimal
 		var owedAmount decimal.Decimal
@@ -153,44 +153,64 @@ func (s *SettlementService) GenerateOptimalSettlements(eventID uint) ([]models.S
 
 // CreateSettlements creates settlement records in the database
 func (s *SettlementService) CreateSettlements(eventID uint) ([]models.Settlement, error) {
+	fmt.Printf("DEBUG: Starting CreateSettlements for eventID: %d\n", eventID)
+
 	// Clear existing pending settlements
-	database.DB.Where("event_id = ? AND status = ?", eventID, "pending").Delete(&models.Settlement{})
+	deleteResult := database.DB.Where("event_id = ? AND status = ?", eventID, "pending").Delete(&models.Settlement{})
+	fmt.Printf("DEBUG: Cleared %d existing pending settlements\n", deleteResult.RowsAffected)
 
 	// Generate optimal settlements
 	settlements, err := s.GenerateOptimalSettlements(eventID)
 	if err != nil {
+		fmt.Printf("DEBUG: Error generating optimal settlements: %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("DEBUG: Generated %d settlements\n", len(settlements))
 
 	// Create settlements in database
 	for i, settlement := range settlements {
+		fmt.Printf("DEBUG: Creating settlement %d: From=%d To=%d Amount=%s\n", i+1, settlement.FromUserID, settlement.ToUserID, settlement.Amount)
 		if err := database.DB.Create(&settlement).Error; err != nil {
+			fmt.Printf("DEBUG: Error creating settlement: %v\n", err)
 			return nil, fmt.Errorf("failed to create settlement: %v", err)
 		}
 		settlements[i] = settlement
+		fmt.Printf("DEBUG: Successfully created settlement with ID: %d\n", settlement.ID)
 	}
 
 	// Load settlements with user details
 	var result []models.Settlement
+	fmt.Printf("DEBUG: Loading settlements with user details for eventID: %d\n", eventID)
 	if err := database.DB.Where("event_id = ? AND status = ?", eventID, "pending").
 		Preload("FromUser").
 		Preload("ToUser").
 		Find(&result).Error; err != nil {
+		fmt.Printf("DEBUG: Error loading settlements: %v\n", err)
 		return nil, fmt.Errorf("failed to load settlements: %v", err)
 	}
+	fmt.Printf("DEBUG: Loaded %d settlements with user details\n", len(result))
 
 	return result, nil
 }
 
 // GetEventSettlements returns all settlements for an event
 func (s *SettlementService) GetEventSettlements(eventID uint) ([]models.Settlement, error) {
+	fmt.Printf("DEBUG: GetEventSettlements called for eventID: %d\n", eventID)
+
 	var settlements []models.Settlement
 	if err := database.DB.Where("event_id = ?", eventID).
 		Preload("FromUser").
 		Preload("ToUser").
 		Order("created_at DESC").
 		Find(&settlements).Error; err != nil {
+		fmt.Printf("DEBUG: Error fetching settlements: %v\n", err)
 		return nil, fmt.Errorf("failed to get settlements: %v", err)
+	}
+
+	fmt.Printf("DEBUG: Found %d settlements for eventID %d\n", len(settlements), eventID)
+	for i, settlement := range settlements {
+		fmt.Printf("DEBUG: Settlement %d: ID=%d From=%d To=%d Amount=%s Status=%s\n",
+			i+1, settlement.ID, settlement.FromUserID, settlement.ToUserID, settlement.Amount, settlement.Status)
 	}
 
 	return settlements, nil

@@ -63,7 +63,7 @@ func main() {
 
 	// Frontend routes (serve HTML pages)
 	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "login.html", gin.H{
+		c.HTML(http.StatusOK, "login_swiss.html", gin.H{
 			"title": "ExpenseTracker - Login",
 		})
 	})
@@ -75,14 +75,26 @@ func main() {
 	})
 
 	router.GET("/dashboard", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "dashboard_simple.html", gin.H{
-			"title": "ExpenseTracker - Dashboard",
+		c.HTML(http.StatusOK, "dashboard_swiss.html", gin.H{
+			"title": "Dashboard",
 		})
 	})
 
 	router.GET("/events/:eventId", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "details.html", gin.H{
 			"title": "Event Details",
+		})
+	})
+
+	router.GET("/event-details", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "event_details_swiss.html", gin.H{
+			"title": "Event Details",
+		})
+	})
+
+	router.GET("/test-simple", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "test_simple.html", gin.H{
+			"title": "Simple Test",
 		})
 	})
 
@@ -138,10 +150,10 @@ func main() {
 		// Individual expense endpoints
 		expenseAPI := protectedAPI.Group("/expenses")
 		{
-			expenseAPI.GET("/:eventId", expenseController.GetExpenseDetails)
-			expenseAPI.PUT("/:eventId", expenseController.UpdateExpense)
-			expenseAPI.DELETE("/:eventId", expenseController.DeleteExpense)
-			expenseAPI.POST("/:eventId/review", expenseController.ReviewExpense)
+			expenseAPI.GET("/:id", expenseController.GetExpenseDetails)
+			expenseAPI.PUT("/:id", expenseController.UpdateExpense)
+			expenseAPI.DELETE("/:id", expenseController.DeleteExpense)
+			expenseAPI.POST("/:id/review", expenseController.ReviewExpense)
 		}
 
 		// Expense categories
