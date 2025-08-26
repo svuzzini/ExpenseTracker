@@ -749,8 +749,6 @@ func (ec *ExpenseController) calculateExpenseShares(expense models.Expense, part
 		}
 	}
 
-	var shares []models.ExpenseShare
-
 	switch expense.SplitType {
 	case "equal":
 		return ec.calculateEqualSplit(expense, participants)
@@ -763,8 +761,6 @@ func (ec *ExpenseController) calculateExpenseShares(expense models.Expense, part
 	default:
 		return nil, fmt.Errorf("invalid split type")
 	}
-
-	return shares, nil
 }
 
 // calculateEqualSplit calculates equal split among participants

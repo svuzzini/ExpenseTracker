@@ -436,6 +436,7 @@
     <!-- Scripts -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="/static/js/utils.js"></script>
+    <script src="/static/js/sms-invite.js"></script>
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
@@ -452,7 +453,15 @@
         
         async function initializeDashboard() {
             try {
-                // Load user profile
+                // Check authentication first
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    console.log('No token found, redirecting to login');
+                    window.location.href = '/';
+                    return;
+                }
+                
+                // Load user profile (this will also verify token validity)
                 await loadUserProfile();
                 
                 // Load dashboard data
@@ -467,6 +476,16 @@
                 
             } catch (error) {
                 console.error('Failed to initialize dashboard:', error);
+                
+                // Check if it's an authentication error
+                if (error.message && error.message.includes('401')) {
+                    console.log('Authentication error, redirecting to login');
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    window.location.href = '/';
+                    return;
+                }
+                
                 showErrorMessage('Failed to load dashboard data');
             }
         }
@@ -480,6 +499,8 @@
                 }
             } catch (error) {
                 console.error('Failed to load user profile:', error);
+                // Re-throw authentication errors to be handled by parent function
+                throw error;
             }
         }
         
@@ -568,8 +589,11 @@
                                 <div class="body-small opacity-60">
                                     Created ${new Date(event.created_at).toLocaleDateString()}
                                 </div>
-                                <div class="flex gap-2">
+                                <div class="flex gap-2 items-center">
                                     <span class="caption">Code: ${event.code}</span>
+                                    <button class="btn btn-ghost btn-sm" onclick="InviteSystem.showEnhancedInviteModal('${event.code}', '${event.name}')" title="Invite people to this event">
+                                        <i data-lucide="user-plus" style="width: 14px; height: 14px;"></i>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -640,13 +664,29 @@
         async function handleCreateEvent(e) {
             e.preventDefault();
             
-            const formData = new FormData(e.target);
+            const name = document.getElementById('event-name').value;
+            const description = document.getElementById('event-description').value;
+            const currency = document.getElementById('event-currency').value;
+            
+            // Validate required fields
+            if (!name || !name.trim()) {
+                showErrorMessage('Event name is required');
+                return;
+            }
+            
+            if (!currency || currency.length !== 3) {
+                showErrorMessage('Please select a valid currency');
+                return;
+            }
+            
             const eventData = {
-                name: document.getElementById('event-name').value,
-                description: document.getElementById('event-description').value,
-                currency: document.getElementById('event-currency').value,
-                category: document.getElementById('event-category').value
+                name: name.trim(),
+                description: description.trim(),
+                currency: currency,
+                require_approval: document.getElementById('require-approval') ? document.getElementById('require-approval').checked : false
             };
+            
+            console.log('DEBUG: Creating event with data:', eventData);
             
             try {
                 const response = await apiCall('/api/v1/events/', {
@@ -656,8 +696,12 @@
                 
                 if (response.ok) {
                     const newEvent = await response.json();
+                    console.log('DEBUG: Event created successfully:', newEvent);
                     closeModal('create-event-modal');
-                    showSuccessMessage('Event created successfully!');
+                    showSuccessMessage(`Event created successfully! Code: ${newEvent.code}`);
+                    
+                    // Reset form
+                    document.getElementById('create-event-form').reset();
                     
                     // Refresh events
                     await loadUserEvents();
@@ -668,7 +712,8 @@
                     }, 1000);
                 } else {
                     const error = await response.json();
-                    showErrorMessage(error.error || 'Failed to create event');
+                    console.error('DEBUG: Event creation error:', error);
+                    showErrorMessage(error.error || error.details || 'Failed to create event');
                 }
             } catch (error) {
                 console.error('Error creating event:', error);
@@ -679,33 +724,48 @@
         async function handleJoinEvent(e) {
             e.preventDefault();
             
-            const eventCode = document.getElementById('event-code').value;
-            const displayName = document.getElementById('display-name').value;
+            const eventCode = document.getElementById('event-code').value.trim().toUpperCase();
+            
+            // Validate event code
+            if (!eventCode) {
+                showErrorMessage('Please enter an event code');
+                return;
+            }
+            
+            if (eventCode.length !== 8) {
+                showErrorMessage('Event code must be exactly 8 characters');
+                return;
+            }
+            
+            console.log('DEBUG: Joining event with code:', eventCode);
             
             try {
                 const response = await apiCall('/api/v1/events/join', {
                     method: 'POST',
                     body: JSON.stringify({
-                        code: eventCode,
-                        display_name: displayName
+                        code: eventCode
                     })
                 });
                 
                 if (response.ok) {
                     const result = await response.json();
+                    console.log('DEBUG: Join event success:', result);
                     closeModal('join-event-modal');
                     showSuccessMessage('Successfully joined event!');
                     
                     // Refresh events
                     await loadUserEvents();
                     
-                    // Navigate to joined event
-                    setTimeout(() => {
-                        openEvent(result.event_id);
-                    }, 1000);
+                    // Navigate to joined event (use event.id from response)
+                    if (result.event && result.event.id) {
+                        setTimeout(() => {
+                            openEvent(result.event.id);
+                        }, 1000);
+                    }
                 } else {
                     const error = await response.json();
-                    showErrorMessage(error.error || 'Failed to join event');
+                    console.error('DEBUG: Join event error:', error);
+                    showErrorMessage(error.error || error.details || 'Failed to join event');
                 }
             } catch (error) {
                 console.error('Error joining event:', error);

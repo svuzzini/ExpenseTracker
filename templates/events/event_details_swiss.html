@@ -286,9 +286,9 @@
             </a>
             
             <div class="nav-actions">
-                <button class="btn btn-ghost btn-sm" onclick="copyEventCode()">
-                    <i data-lucide="copy"></i>
-                    Share Event
+                <button class="btn btn-primary btn-sm" onclick="copyEventCode()" title="Copy event code to invite others">
+                    <i data-lucide="user-plus"></i>
+                    Invite People
                 </button>
                 <div class="nav-user">
                     <div class="user-avatar">
@@ -539,6 +539,7 @@
     <!-- Scripts -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="/static/js/utils.js"></script>
+    <script src="/static/js/sms-invite.js"></script>
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
@@ -923,15 +924,43 @@
         async function handleAddExpense(e) {
             e.preventDefault();
             
+            const amount = document.getElementById('expense-amount').value;
+            const description = document.getElementById('expense-description').value;
+            const categoryId = document.getElementById('expense-category').value;
+            const date = document.getElementById('expense-date').value;
+            
+            // Validate required fields
+            if (!description || !description.trim()) {
+                showErrorMessage('Description is required');
+                return;
+            }
+            
+            if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+                showErrorMessage('Please enter a valid amount greater than 0');
+                return;
+            }
+            
+            if (!categoryId) {
+                showErrorMessage('Please select a category');
+                return;
+            }
+            
+            if (!date) {
+                showErrorMessage('Please select a date');
+                return;
+            }
+            
             const expenseData = {
-                description: document.getElementById('expense-description').value,
-                amount: parseFloat(document.getElementById('expense-amount').value),
+                description: description.trim(),
+                amount: amount, // Keep as string for backend validation
                 currency: currentEvent?.currency || 'USD',
-                category_id: parseInt(document.getElementById('expense-category').value),
-                date: document.getElementById('expense-date').value + 'T00:00:00Z',
+                category_id: parseInt(categoryId),
+                date: date + 'T00:00:00Z',
                 split_type: 'equal',
                 participants: []
             };
+            
+            console.log('DEBUG: Sending expense data:', expenseData);
             
             try {
                 const response = await apiCall(`/api/v1/expenses/event/${currentEventId}/`, {
@@ -940,6 +969,8 @@
                 });
                 
                 if (response.ok) {
+                    const newExpense = await response.json();
+                    console.log('DEBUG: Expense created successfully:', newExpense);
                     closeModal('add-expense-modal');
                     showSuccessMessage('Expense added successfully!');
                     
@@ -955,7 +986,8 @@
                     document.getElementById('expense-date').value = new Date().toISOString().split('T')[0];
                 } else {
                     const error = await response.json();
-                    showErrorMessage(error.error || 'Failed to add expense');
+                    console.error('DEBUG: Expense creation error:', error);
+                    showErrorMessage(error.error || error.details || 'Failed to add expense');
                 }
             } catch (error) {
                 console.error('Error adding expense:', error);
@@ -966,11 +998,22 @@
         async function handleAddContribution(e) {
             e.preventDefault();
             
+            const amount = document.getElementById('contribution-amount').value;
+            const notes = document.getElementById('contribution-notes').value || '';
+            
+            // Validate amount
+            if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+                showErrorMessage('Please enter a valid amount greater than 0');
+                return;
+            }
+            
             const contributionData = {
-                amount: parseFloat(document.getElementById('contribution-amount').value),
+                amount: amount, // Keep as string for backend validation
                 currency: currentEvent?.currency || 'USD',
-                notes: document.getElementById('contribution-notes').value
+                notes: notes
             };
+            
+            console.log('DEBUG: Sending contribution data:', contributionData);
             
             try {
                 const response = await apiCall(`/api/v1/events/${currentEventId}/contributions`, {
@@ -992,7 +1035,8 @@
                     document.getElementById('add-contribution-form').reset();
                 } else {
                     const error = await response.json();
-                    showErrorMessage(error.error || 'Failed to add contribution');
+                    console.error('DEBUG: Contribution error response:', error);
+                    showErrorMessage(error.error || error.details || 'Failed to add contribution');
                 }
             } catch (error) {
                 console.error('Error adding contribution:', error);
@@ -1037,10 +1081,34 @@
         }
         
         function copyEventCode() {
-            if (currentEvent?.code) {
-                navigator.clipboard.writeText(currentEvent.code).then(() => {
-                    showSuccessMessage(`Event code ${currentEvent.code} copied to clipboard!`);
-                });
+            console.log('DEBUG: copyEventCode called, currentEvent:', currentEvent);
+            
+            if (!currentEvent) {
+                console.log('DEBUG: currentEvent not loaded yet');
+                showErrorMessage('Event details not loaded yet. Please wait a moment and try again.');
+                return;
+            }
+            
+            if (!currentEvent.code) {
+                console.log('DEBUG: currentEvent.code not available:', currentEvent.code);
+                showErrorMessage('Event code not available');
+                return;
+            }
+            
+            // Use enhanced SMS invite modal instead of simple clipboard copy
+            console.log('DEBUG: Opening enhanced invite modal with SMS support');
+            InviteSystem.showEnhancedInviteModal(currentEvent.code, currentEvent.name);
+        }
+        
+        // Legacy showInviteModal function - now redirects to enhanced SMS version
+        function showInviteModal(eventCode, eventName) {
+            return InviteSystem.showEnhancedInviteModal(eventCode, eventName || currentEvent?.name || 'Expense Event');
+        }
+        
+        // Legacy copyInviteCode function - now handled by SMS invite system
+        function copyInviteCode() {
+            if (typeof InviteSystem !== 'undefined') {
+                InviteSystem.copyInviteCode();
             }
         }
         

@@ -214,14 +214,16 @@ async function setupExpenseFormHandlers() {
         
         const formData = new FormData(e.target);
         const expenseData = {
-            amount: parseFloat(formData.get('amount')),
+            amount: formData.get('amount'), // Keep as string for backend
             description: formData.get('description'),
+            currency: 'USD', // Add required currency field
             category_id: parseInt(formData.get('category_id')),
-            date: formData.get('date'),
+            date: formData.get('date') + 'T00:00:00Z', // Ensure proper date format
             split_type: formData.get('split_type') || 'equal',
             location: formData.get('location') || '',
             vendor: formData.get('vendor') || '',
-            notes: formData.get('notes') || ''
+            notes: formData.get('notes') || '',
+            participants: [] // Add required participants field
         };
         
         try {
@@ -249,7 +251,8 @@ async function setupExpenseFormHandlers() {
         
         const formData = new FormData(e.target);
         const contributionData = {
-            amount: parseFloat(formData.get('amount')),
+            amount: formData.get('amount'), // Keep as string for backend
+            currency: 'USD', // Add required currency field
             notes: formData.get('notes') || ''
         };
         

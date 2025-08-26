@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -197,10 +198,10 @@ func seedDefaultData() error {
 	log.Println("Seeding default data...")
 
 	// Check if categories already exist
-	var count int64
-	DB.Model(&models.ExpenseCategory{}).Count(&count)
+	var categoryCount int64
+	DB.Model(&models.ExpenseCategory{}).Count(&categoryCount)
 
-	if count == 0 {
+	if categoryCount == 0 {
 		categories := models.GetDefaultCategories()
 		for _, category := range categories {
 			if err := DB.Create(&category).Error; err != nil {
@@ -208,6 +209,32 @@ func seedDefaultData() error {
 			}
 		}
 		log.Printf("Created %d default expense categories", len(categories))
+	}
+
+	// Check if demo user already exists
+	var userCount int64
+	DB.Model(&models.User{}).Where("email = ?", "demo@example.com").Count(&userCount)
+
+	if userCount == 0 {
+		// Create demo user
+		demoUser := models.User{
+			Username:    "demo",
+			Email:       "demo@example.com",
+			DisplayName: "Demo User",
+		}
+
+		// Hash password "Demo123!" (meets password requirements)
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte("Demo123!"), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+		demoUser.Password = string(hashedPassword)
+
+		if err := DB.Create(&demoUser).Error; err != nil {
+			return err
+		}
+
+		log.Println("Created demo user: demo@example.com / Demo123!")
 	}
 
 	return nil
